@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
+import { createClient, User } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,6 +23,33 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      setEmail(user.email ?? "");
+      setName(user.user_metadata?.full_name ?? "");
+    }
+  }, [user]);
+
+  async function signIn() {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
 
   async function placeOrder() {
     if (!name || !email) {
@@ -36,27 +63,45 @@ export default function Home() {
       email,
       items: cart,
       total,
+      user_id: user?.id ?? null,
     });
     setSaving(false);
     if (error) {
       setError("Could not save order: " + error.message);
     } else {
       await fetch("/api/send-email", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ name, email, items: cart, total }),
-});
-setDone(true);
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, items: cart, total }),
+      });
+      setDone(true);
     }
   }
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <header className="border-b border-yellow-600 px-8 py-5 flex justify-between items-center">
+      <header className="border-b border-yellow-600 px-8 py-5 flex justify-between items-center gap-4">
         <h1 className="text-2xl font-bold text-yellow-500 tracking-widest">
           MY SHOP
         </h1>
-        <span className="text-yellow-500">🛒 {cart.length} items</span>
+        <div className="flex items-center gap-4 text-yellow-500 text-sm">
+          <span>🛒 {cart.length} items</span>
+          {user ? (
+            <>
+              <span className="hidden sm:inline">{user.email}</span>
+              <button onClick={signOut} className="border border-yellow-600 rounded px-3 py-1">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={signIn}
+              className="bg-yellow-500 text-black font-semibold rounded px-3 py-1"
+            >
+              Sign in with Google
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="max-w-5xl mx-auto p-8 grid md:grid-cols-3 gap-6">
@@ -121,6 +166,13 @@ setDone(true);
                 {saving ? "Saving..." : "Place order"}
               </button>
             </div>
+          ) : !user ? (
+            <button
+              onClick={signIn}
+              className="mt-4 w-full bg-yellow-500 text-black font-semibold rounded-lg py-2"
+            >
+              Sign in with Google to checkout
+            </button>
           ) : (
             <button
               onClick={() => setCheckout(true)}
