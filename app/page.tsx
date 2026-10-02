@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient, User } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -16,14 +17,21 @@ const products = [
 
 export default function Home() {
   const [cart, setCart] = useState<typeof products>([]);
-  const total = cart.reduce((sum, item) => sum + item.price, 0);
-  const [checkout, setCheckout] = useState(false);
-  const [done, setDone] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cart");
+      if (saved) setCart(JSON.parse(saved));
+    } catch {}
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) localStorage.setItem("cart", JSON.stringify(cart));
+  }, [cart, loaded]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
@@ -33,13 +41,6 @@ export default function Home() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      setEmail(user.email ?? "");
-      setName(user.user_metadata?.full_name ?? "");
-    }
-  }, [user]);
-
   async function signIn() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -47,49 +48,19 @@ export default function Home() {
     });
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-  }
-
-  async function placeOrder() {
-    if (!name || !email) {
-      setError("Please enter your name and email.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    const { error } = await supabase.from("orders").insert({
-      name,
-      email,
-      items: cart,
-      total,
-      user_id: user?.id ?? null,
-    });
-    setSaving(false);
-    if (error) {
-      setError("Could not save order: " + error.message);
-    } else {
-      await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, items: cart, total }),
-      });
-      setDone(true);
-    }
-  }
-
   return (
     <main className="min-h-screen bg-black text-white">
       <header className="border-b border-yellow-600 px-8 py-5 flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-yellow-500 tracking-widest">
-          MY SHOP
-        </h1>
+        <h1 className="text-2xl font-bold text-yellow-500 tracking-widest">MY SHOP</h1>
         <div className="flex items-center gap-4 text-yellow-500 text-sm">
           <span>🛒 {cart.length} items</span>
           {user ? (
             <>
               <span className="hidden sm:inline">{user.email}</span>
-              <button onClick={signOut} className="border border-yellow-600 rounded px-3 py-1">
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="border border-yellow-600 rounded px-3 py-1"
+              >
                 Sign out
               </button>
             </>
@@ -139,48 +110,20 @@ export default function Home() {
             <span>${total}</span>
           </div>
 
-          {done ? (
-            <p className="mt-4 text-green-400">
-              ✅ Thanks {name}! Order saved. A confirmation will be sent to {email}.
-            </p>
-          ) : checkout ? (
-            <div className="mt-4 space-y-3">
-              <input
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full p-2 rounded bg-black border border-yellow-700"
-              />
-              <input
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 rounded bg-black border border-yellow-700"
-              />
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-              <button
-                onClick={placeOrder}
-                disabled={saving}
-                className="w-full bg-yellow-500 text-black font-semibold rounded-lg py-2 disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Place order"}
-              </button>
-            </div>
-          ) : !user ? (
+          {cart.length === 0 ? (
             <button
-              onClick={signIn}
-              className="mt-4 w-full bg-yellow-500 text-black font-semibold rounded-lg py-2"
-            >
-              Sign in with Google to checkout
-            </button>
-          ) : (
-            <button
-              onClick={() => setCheckout(true)}
-              disabled={cart.length === 0}
-              className="mt-4 w-full bg-yellow-500 text-black font-semibold rounded-lg py-2 disabled:opacity-40"
+              disabled
+              className="mt-4 w-full bg-yellow-500 text-black font-semibold rounded-lg py-2 opacity-40"
             >
               Checkout
             </button>
+          ) : (
+            <Link
+              href="/checkout"
+              className="mt-4 block text-center w-full bg-yellow-500 text-black font-semibold rounded-lg py-2"
+            >
+              Go to checkout
+            </Link>
           )}
         </aside>
       </div>
