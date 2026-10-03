@@ -132,7 +132,11 @@ export default function Home() {
                 </div>
                 <p>{p.description}</p>
                 <button
-                  className="add-button"
+                  className={
+                    shop.cart.some((i) => i.product_id === p.id)
+                      ? "add-button added"
+                      : "add-button"
+                  }
                   disabled={
                     shop.busy ||
                     (shop.cart.find((i) => i.product_id === p.id)?.quantity ||
@@ -146,7 +150,14 @@ export default function Home() {
                     )
                   }
                 >
-                  Add to bag <span>+</span>
+                  {shop.cart.some((i) => i.product_id === p.id)
+                    ? "Added to cart (" +
+                      shop.cart.find((i) => i.product_id === p.id)!.quantity +
+                      ")"
+                    : "Add to cart"}
+                  <span aria-hidden="true">
+                    {shop.cart.some((i) => i.product_id === p.id) ? "✓" : "+"}
+                  </span>
                 </button>
               </article>
             ))}

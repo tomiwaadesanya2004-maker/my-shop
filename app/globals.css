@@ -387,6 +387,10 @@ img {
   background: var(--accent);
   border-color: var(--accent);
 }
+.add-button.added {
+  background: var(--accent);
+  border-color: var(--accent);
+}
 .closing-card {
   background: var(--accent);
   padding: 50px 6%;
