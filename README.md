@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# My Shop
 
-## Getting Started
+A Next.js shop with a responsive collection, product search and categories, cart page, delivery checkout, Google sign-in, Paystack hosted payments, order history, and Mailgun payment receipts.
 
-First, run the development server:
+## Start here
 
-```bash
+Follow [the step-by-step setup guide](docs/SETUP.md) to create the Supabase schema and configure Google Cloud, Paystack and Mailgun. Copy missing values from [.env.example](.env.example) into your local environment. Existing secrets are preserved.
+
+```sh
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Validate
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run lint
+npm run test
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`npm run test` covers payment matching, ownership, failed payments, email outages and signed webhooks using mocked services. Live integrations require the database migration and credentials described in the setup guide.
 
-## Learn More
+## Code map
 
-To learn more about Next.js, take a look at the following resources:
+- `app/`: collection, cart, checkout, payment result and order history.
+- `components/`: shared shop state, authentication, cart persistence and order summary.
+- `lib/server.ts`: server-only credentials, verified bearer authentication and Paystack transport.
+- `lib/payments.ts`: payment verification and leased Mailgun delivery.
+- `app/api/`: checkout, verification, signed webhook and authenticated email worker.
+- `supabase/migrations/001_shop.sql`: tables, RLS, atomic checkout snapshots, settlement and email outbox.
+- `public/products/`: illustrative demo product artwork; replace with your actual catalog assets.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Guest bags persist locally and merge into the signed-in account. Account carts, profiles, orders, item snapshots and email jobs persist in Supabase. Currency is NGN. Configure an external scheduler for the email retry endpoint. Inventory management, refunds, fulfilment tracking and an admin dashboard are not included.

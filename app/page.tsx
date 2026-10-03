@@ -1,132 +1,169 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { createClient, User } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
-
-const products = [
-  { id: 1, name: "T-Shirt", price: 15, emoji: "👕" },
-  { id: 2, name: "Sneakers", price: 60, emoji: "👟" },
-  { id: 3, name: "Cap", price: 10, emoji: "🧢" },
-];
-
+import Image from "next/image";
+import { useShop } from "@/components/shop-provider";
+import { money } from "@/lib/types";
 export default function Home() {
-  const [cart, setCart] = useState<typeof products>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const total = cart.reduce((sum, item) => sum + item.price, 0);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cart");
-      if (saved) setCart(JSON.parse(saved));
-    } catch {}
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (loaded) localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart, loaded]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  async function signIn() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-  }
-
+  const shop = useShop();
+  const [category, setCategory] = useState("All"),
+    [search, setSearch] = useState("");
+  const products = shop.products.filter(
+    (p) =>
+      (category === "All" || p.category === category) &&
+      (p.name + " " + p.description)
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
   return (
-    <main className="min-h-screen bg-black text-white">
-      <header className="border-b border-yellow-600 px-8 py-5 flex justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-yellow-500 tracking-widest">MY SHOP</h1>
-        <div className="flex items-center gap-4 text-yellow-500 text-sm">
-          <span>🛒 {cart.length} items</span>
-          {user ? (
-            <>
-              <span className="hidden sm:inline">{user.email}</span>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="border border-yellow-600 rounded px-3 py-1"
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={signIn}
-              className="bg-yellow-500 text-black font-semibold rounded px-3 py-1"
-            >
-              Sign in with Google
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-5xl mx-auto p-8 grid md:grid-cols-3 gap-6">
-        <section className="md:col-span-2 grid sm:grid-cols-2 gap-6">
-          {products.map((p) => (
-            <div
-              key={p.id}
-              className="bg-zinc-900 border border-yellow-700 rounded-xl p-6 text-center hover:border-yellow-400"
-            >
-              <div className="text-7xl mb-4">{p.emoji}</div>
-              <h2 className="text-lg font-semibold text-yellow-400">{p.name}</h2>
-              <p className="text-gray-300 mb-4">${p.price}</p>
-              <button
-                onClick={() => setCart([...cart, p])}
-                className="w-full bg-yellow-500 text-black font-semibold rounded-lg py-2 hover:bg-yellow-400"
-              >
-                Add to cart
-              </button>
-            </div>
-          ))}
-        </section>
-
-        <aside className="bg-zinc-900 border border-yellow-700 rounded-xl p-6 h-fit">
-          <h2 className="text-xl font-bold text-yellow-500 mb-4">Your Cart</h2>
-          {cart.length === 0 && <p className="text-gray-500">Cart is empty</p>}
-          {cart.map((item, i) => (
-            <div key={i} className="flex justify-between py-1">
-              <span>{item.name}</span>
-              <span className="text-yellow-400">${item.price}</span>
-            </div>
-          ))}
-          <hr className="my-4 border-yellow-800" />
-          <div className="flex justify-between font-bold text-lg text-yellow-500">
-            <span>Total</span>
-            <span>${total}</span>
+    <>
+      <section className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow">THE EVERYDAY COLLECTION / 01</p>
+          <h1>
+            Your everyday.
+            <br />
+            <em>Elevated.</em>
+          </h1>
+          <p>
+            Easy layers. Fresh steps. Little essentials.
+            <br />
+            Good things you’ll reach for, again and again.
+          </p>
+          <a className="button dark" href="#collection">
+            Explore the collection <span>↗</span>
+          </a>
+          <div className="hero-caption">
+            <span>Thoughtfully chosen</span>
+            <span>Made to go everywhere</span>
           </div>
-
-          {cart.length === 0 ? (
-            <button
-              disabled
-              className="mt-4 w-full bg-yellow-500 text-black font-semibold rounded-lg py-2 opacity-40"
-            >
-              Checkout
-            </button>
-          ) : (
-            <Link
-              href="/checkout"
-              className="mt-4 block text-center w-full bg-yellow-500 text-black font-semibold rounded-lg py-2"
-            >
-              Go to checkout
-            </Link>
-          )}
-        </aside>
+        </div>
+        <div className="hero-art">
+          <div className="hero-circle" />
+          <Image
+            unoptimized
+            src="/products/sneakers.svg"
+            alt="Court sneakers from the everyday collection"
+            width={600}
+            height={480}
+          />
+          <span className="hero-label">
+            THE COURT SNEAKER
+            <br />
+            <strong>Every step, a fresh start.</strong>
+          </span>
+          <span className="edition">EVERYDAY ESSENTIALS</span>
+        </div>
+      </section>
+      <div className="benefits">
+        <span>
+          ↗ <strong>Everyday quality</strong> · Carefully selected
+        </span>
+        <span>
+          ◇ <strong>Secure checkout</strong> · Powered by Paystack
+        </span>
+        <span>
+          ⊞ <strong>Delivered to you</strong> · Across Nigeria
+        </span>
       </div>
-    </main>
+      <section id="collection" className="collection">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">LESS SEARCHING. MORE LIVING.</p>
+            <h2>Find your next favourite.</h2>
+          </div>
+          <label className="search">
+            <span className="sr-only">Search products</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the collection"
+              type="search"
+            />
+          </label>
+        </div>
+        <div className="collection-tools">
+          <div className="filters" aria-label="Product categories">
+            {["All", "Clothing", "Footwear", "Accessories"].map((c) => (
+              <button
+                key={c}
+                aria-pressed={category === c}
+                className={category === c ? "active" : ""}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <span>{products.length} essentials</span>
+        </div>
+        {!shop.ready ? (
+          <div className="product-grid">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton" />
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="empty-state">
+            <h3>No products found.</h3>
+            <p>
+              {shop.error
+                ? "The collection will appear when your database is configured."
+                : "Try another search or category."}
+            </p>
+          </div>
+        ) : (
+          <div className="product-grid">
+            {products.map((p, index) => (
+              <article className="product-card" key={p.id}>
+                <div className={"product-image tone-" + (index % 3)}>
+                  <span className="product-tag">{p.category}</span>
+                  <Image
+                    unoptimized
+                    src={p.image_url}
+                    alt={p.name}
+                    width={480}
+                    height={400}
+                  />
+                </div>
+                <div className="product-title">
+                  <h3>{p.name}</h3>
+                  <span>{money(p.price_kobo)}</span>
+                </div>
+                <p>{p.description}</p>
+                <button
+                  className="add-button"
+                  disabled={
+                    shop.busy ||
+                    (shop.cart.find((i) => i.product_id === p.id)?.quantity ||
+                      0) >= 99
+                  }
+                  onClick={() =>
+                    shop.quantity(
+                      p.id,
+                      (shop.cart.find((i) => i.product_id === p.id)?.quantity ||
+                        0) + 1,
+                    )
+                  }
+                >
+                  Add to bag <span>+</span>
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+      <section className="closing-card">
+        <p className="eyebrow">A GOOD DAY STARTS WITH THE LITTLE THINGS.</p>
+        <h2>
+          Keep it simple.
+          <br />
+          Make it yours.
+        </h2>
+        <Link href="/cart" className="button dark">
+          See what’s in your bag ↗
+        </Link>
+      </section>
+    </>
   );
 }
